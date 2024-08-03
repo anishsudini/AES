@@ -8,9 +8,8 @@ The four commands below specify the exact command-line syntax for invoking encry
  	3. python3 AES.py -i image.ppm key.txt enc_image.ppm
   	4. python3 AES.py -r 3 key.txt random_numbers.txt
  
-• Encryption (indicated with the -e argument in line 1) –
-
-  – perform AES encryption on the plaintext in message.txt using the key in key.txt, and write the ciphertext to a file called encrypted.txt
+- Encryption (indicated with the -e argument in line 1)
+-   perform AES encryption on the plaintext in message.txt using the key in key.txt, and write the ciphertext to a file called encrypted.txt
 
 – You can assume that message.txt and key.txt contain textstrings (i.e. ASCII characters)
 
