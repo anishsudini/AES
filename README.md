@@ -9,11 +9,9 @@ The four commands below specify the exact command-line syntax for invoking encry
   	4. python3 AES.py -r 3 key.txt random_numbers.txt
  
 - Encryption (indicated with the -e argument in line 1)
-⋅⋅⋅perform AES encryption on the plaintext in message.txt using the key in key.txt, and write the ciphertext to a file called encrypted.txt
-
-– You can assume that message.txt and key.txt contain textstrings (i.e. ASCII characters)
-
-– However, the final ciphertext should be saved as a single-line hexstring
+	- perform AES encryption on the plaintext in message.txt using the key in key.txt, and write the ciphertext to a file called encrypted.txt
+ 	- You can assume that message.txt and key.txt contain textstrings (i.e. ASCII characters)
+	- However, the final ciphertext should be saved as a single-line hexstring
 
 • Decryption (indicated with the -d argument in line 2) –
 
