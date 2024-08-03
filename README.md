@@ -25,5 +25,5 @@ The two commands below specify the exact command-line syntax for invoking encryp
 • X9.31 CSPRNG (crytographically secure pseudo-random number generator) (indicated with the -r argument in line 4)
 
 	- This method uses the arguments with the X9.31 algorithm to compute totalNum number of pseudo-random numbers, each represented as BitVector objects.
-        - These numbers are then written to the output file in base 10 notation.
+	- These numbers are then written to the output file in base 10 notation.
 	- Currently the initial vector and date time are intiailized and set to "counter-mode-ctr" and 501 respectively but can be updated to be anything.
