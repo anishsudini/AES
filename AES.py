@@ -1,5 +1,6 @@
 import sys
 from BitVector import *
+import time
 
 class AES ():
 # class constructor - when creating an AES object, the
@@ -105,7 +106,7 @@ class AES ():
         round_constant = round_constant.gf_multiply_modular(BitVector(intVal = 0x02), self.AES_modulus, 8)
         return newword, round_constant
 
-    def state_array(self, bitvec_Hex): 
+    def state_array(self, bitvec_Hex):
         
         new_bitvec_Hex = []
         for i in range(0, len(bitvec_Hex), 2):
@@ -120,7 +121,7 @@ class AES ():
         
         return statearray
 
-    def sub_bytes(self, statearray): 
+    def sub_bytes(self, statearray):
         for i in range(4):
             for j in range(4):
                 statearray[j][i] = BitVector(intVal=self.subBytesTable[int(statearray[j][i], 16)], size=8).get_bitvector_in_hex()
@@ -157,9 +158,9 @@ class AES ():
         return product    
 
     # encrypt - method performs AES encryption on the plaintext and writes the ciphertext to disk
-    # Inputs : plaintext (str) - filename containing plaintext
+    # Inputs: plaintext (str) - filename containing plaintext
     # ciphertext (str) - filename containing ciphertext
-    # Return : void
+    # Return: void
     def encrypt(self, plaintext:str, ciphertext:str) -> None:
         bv = BitVector(filename = plaintext)
         encrypted_file = open(ciphertext, "w")
@@ -254,9 +255,9 @@ class AES ():
         return product
     
     # decrypt - method performs AES decryption on the ciphertext and writes the recovered plaintext to disk
-    # Inputs : ciphertext (str) - filename containing ciphertext
+    # Inputs: ciphertext (str) - filename containing ciphertext
     # decrypted (str) - filename containing recovered plaintext
-    # Return : void
+    # Return: void
     def decrypt(self, ciphertext:str, decrypted:str) -> None:
         with open(ciphertext, 'r') as file:
             hex_string = file.read().strip()
@@ -319,14 +320,159 @@ class AES ():
 
         return 
 
+    def ctr_aes_encrypt(self, iv, bv, file) -> None:
+        increment = 1
+
+        while(bv.more_to_read):
+            bitvec = bv.read_bits_from_file(128)
+            
+            if(bitvec.length() < 128):
+                bitvec.pad_from_right(128 - bitvec.length())
+            
+            if(iv.length() < 128):
+                iv.pad_from_left(128 - iv.length())
+
+            iv_hex_string = iv.get_bitvector_in_hex()
+            bitvec_Hex = BitVector(hexstring=iv_hex_string) ^ BitVector(hexstring=self.round_keys[0])
+            bitvec_Hex = bitvec_Hex.get_bitvector_in_hex()
+
+            #Step 2: Rounds 1 - 14
+            num_rounds = 1
+            while(num_rounds < 14):
+                #Step 2-a: BitVector -> State Array of Bytes (as elements)
+                statearray = self.state_array(bitvec_Hex) 
+
+                #Step 2-b: Round Step 1: Substitute Bytes
+                statearray = self.sub_bytes(statearray) 
+
+                #Step 2-c: Round Step 2: Shift Rows
+                statearray = self.shift_rows(statearray) 
+                
+                #Step 2-d: Round Step 3: Mix Columns
+                statearray = self.mix_columns(statearray) 
+
+                #Step 2-e: Round Step 4: Add/XOR Round Key
+                statearray_string = ''.join([statearray[j][i] for i in range(4) for j in range(4)])
+                bitvec_Hex = (BitVector(hexstring=statearray_string) ^ BitVector(hexstring=self.round_keys[num_rounds])).get_bitvector_in_hex()
+                num_rounds += 1
+
+            if num_rounds == 14:
+                statearray = self.state_array(bitvec_Hex)
+                
+                statearray = self.sub_bytes(statearray)
+                
+                statearray = self.shift_rows(statearray)
+                
+                statearray_string = ''.join([statearray[j][i] for i in range(4) for j in range(4)])
+                bitvec_Hex = (BitVector(hexstring=statearray_string) ^ BitVector(hexstring = self.round_keys[num_rounds]))
+                
+                output = bitvec_Hex ^ bitvec
+                output.write_to_file(file)
+                iv = BitVector(intVal=(iv.int_val() + int((increment % (2**128)))))
+                increment += 1
+        return
+
+    def ctr_aes_image(self, iv, image_file, enc_image) -> None:
+        image = open(image_file, 'rb')
+        header_line1 = image.readline()
+        header_line2 = image.readline()
+        header_line3 = image.readline()
+
+        encrypted_image_file = open(enc_image, "wb")
+        encrypted_image_file.write(header_line1)
+        encrypted_image_file.write(header_line2)
+        encrypted_image_file.write(header_line3)
+
+        bv = BitVector(filename = image_file)
+        image.close()
+
+        self.ctr_aes_encrypt(iv, bv, encrypted_image_file)
+
+        encrypted_image_file.close()       
+        return
+    
+    def x931_AES_encrypt(self, bv):
+        #Step 1: Add Round Key
+        bv_hex_string = bv.get_bitvector_in_hex()
+        bv_Hex = (BitVector(hexstring=bv_hex_string) ^ BitVector(hexstring=self.round_keys[0]))
+        bv_Hex = bv_Hex.get_bitvector_in_hex()
+
+        #Step 2: Rounds 1 - 14
+        num_rounds = 1
+        while(num_rounds < 14):
+            #Step 2-a: BitVector -> State Array of Bytes (as elements)
+            statearray = self.state_array(bv_Hex) 
+
+            #Step 2-b: Round Step 1: Substitute Bytes
+            statearray = self.sub_bytes(statearray) 
+
+            #Step 2-c: Round Step 2: Shift Rows
+            statearray = self.shift_rows(statearray) 
+            
+            #Step 2-d: Round Step 3: Mix Columns
+            statearray = self.mix_columns(statearray) 
+
+            #Step 2-e: Round Step 4: Add/XOR Round Key
+            statearray_string = ''.join([statearray[j][i] for i in range(4) for j in range(4)])
+            bv_Hex = (BitVector(hexstring=statearray_string) ^ BitVector(hexstring=self.round_keys[num_rounds])).get_bitvector_in_hex()
+            num_rounds += 1
+
+        if num_rounds == 14:
+            statearray = self.state_array(bv_Hex)
+            
+            statearray = self.sub_bytes(statearray)
+            
+            statearray = self.shift_rows(statearray)
+            
+            statearray_string = ''.join([statearray[j][i] for i in range(4) for j in range(4)])
+            enc_bv = (BitVector(hexstring=statearray_string) ^ BitVector(hexstring = self.round_keys[num_rounds]))
+        
+        return enc_bv
+
+    def x931(self, v0, dt, totalNum, outfile) -> None:
+        """
+        Inputs:
+            v0 (BitVector): 128 -bit seed value
+            dt (BitVector): 128 -bit date/time value
+            totalNum (int): total number of pseudo -random numbers to generate
+
+        Method Description:
+        * This method uses the arguments with the X9.31 algorithm to compute totalNum number of pseudo-random numbers, 
+        each represented as BitVector objects.
+        * These numbers are then written to the output file in base 10 notation.
+        * Method returns void
+        """
+        enc_dt = self.x931_AES_encrypt(dt)
+        output = open(outfile, "w")
+
+        while(totalNum > 0):
+            v_xor_dt = v0 ^ enc_dt
+            r = self.x931_AES_encrypt(v_xor_dt)
+            output.write(str(int(r))+"\n")
+            r_xor_dt = r ^ enc_dt
+            v0 = self.x931_AES_encrypt(r_xor_dt)
+            totalNum -= 1
+    
+        output.close()
+        return
+
 if __name__ == "__main__":
     cipher = AES(keyfile = sys.argv[3])
 
     if sys.argv[1] == "-e":
-        cipher.encrypt (plaintext = sys.argv[2], ciphertext = sys.argv[4])
+        cipher.encrypt(plaintext = sys.argv[2], ciphertext = sys.argv[4])
 
     elif sys.argv[1] == "-d":
-        cipher.decrypt (ciphertext = sys.argv[2], decrypted = sys.argv[4])
+        cipher.decrypt(ciphertext = sys.argv[2], decrypted = sys.argv[4])
+
+    elif sys.argv[1] == "-i":
+        start = time.time() 
+        cipher.ctr_aes_image(iv = BitVector(textstring="counter-mode-ctr"), image_file = sys.argv[2], enc_image = sys.argv[4])
+        end = time.time()
+        print(end - start) 
+    
+    elif sys.argv[1] == "-r": 
+        cipher.x931(v0 = BitVector(textstring="counter-mode-ctr"), dt = BitVector(intVal=501, size=128), totalNum = int(sys.argv[2]), outfile = sys.argv[4])
 
     else: 
-        sys.exit ("Incorrect Command - Line Syntax")
+        sys.exit("Incorrect Command - Line Syntax")
