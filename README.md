@@ -1,7 +1,7 @@
 # AES
 AES Encryption &amp; Decryption (Supports Text Files)
 
-The two commands below specify the exact command-line syntax for invoking encryption and decryption.
+The four commands below specify the exact command-line syntax for invoking encryption and decryption.
 
 	1. python3 AES.py -e message.txt key.txt encrypted.txt
 	2. python3 AES.py -d encrypted.txt key.txt decrypted.txt
